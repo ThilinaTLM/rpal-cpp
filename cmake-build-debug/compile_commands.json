@@ -1,0 +1,27 @@
+[
+{
+  "directory": "/home/tlm/Work/rpal-interpreter/cmake-build-debug",
+  "command": "/usr/bin/c++   -g -std=gnu++2a -o CMakeFiles/rpal.dir/src/main.cpp.o -c /home/tlm/Work/rpal-interpreter/src/main.cpp",
+  "file": "/home/tlm/Work/rpal-interpreter/src/main.cpp"
+},
+{
+  "directory": "/home/tlm/Work/rpal-interpreter/cmake-build-debug",
+  "command": "/usr/bin/c++   -g -std=gnu++2a -o CMakeFiles/rpal.dir/src/utils.cpp.o -c /home/tlm/Work/rpal-interpreter/src/utils.cpp",
+  "file": "/home/tlm/Work/rpal-interpreter/src/utils.cpp"
+},
+{
+  "directory": "/home/tlm/Work/rpal-interpreter/cmake-build-debug",
+  "command": "/usr/bin/c++   -g -std=gnu++2a -o CMakeFiles/rpal.dir/src/token.cpp.o -c /home/tlm/Work/rpal-interpreter/src/token.cpp",
+  "file": "/home/tlm/Work/rpal-interpreter/src/token.cpp"
+},
+{
+  "directory": "/home/tlm/Work/rpal-interpreter/cmake-build-debug",
+  "command": "/usr/bin/c++   -g -std=gnu++2a -o CMakeFiles/rpal.dir/src/ast.cpp.o -c /home/tlm/Work/rpal-interpreter/src/ast.cpp",
+  "file": "/home/tlm/Work/rpal-interpreter/src/ast.cpp"
+},
+{
+  "directory": "/home/tlm/Work/rpal-interpreter/cmake-build-debug",
+  "command": "/usr/bin/c++   -g -std=gnu++2a -o CMakeFiles/rpal.dir/src/cse.cpp.o -c /home/tlm/Work/rpal-interpreter/src/cse.cpp",
+  "file": "/home/tlm/Work/rpal-interpreter/src/cse.cpp"
+}
+]
