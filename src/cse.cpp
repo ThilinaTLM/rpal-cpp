@@ -43,37 +43,41 @@ namespace rpal::cse {
 
     void Cse::add_stack(AstNode* node) { this->stack.push(node); }
 
-    void Cse::set_env(const std::string& key, AstNode* value) {
+    void Cse::set_env(std::string& key, rpal::parser::AstNode* value) {
         this->env[key] = value;
+        auto val = this->env[key];
     }
 
     AstNode* Cse::get_env(std::string& key) {
-        auto* value_node = this->env[key];
-        if (value_node == nullptr) {
+        if (this->env.find(key) == env.end()) {
             if (this->parent == nullptr)
-                return nullptr;
+                throw std::runtime_error("undefined variable");
             else
                 return this->parent->get_env(key);
         }
-        return value_node;
+        return this->env[key];
     }
 
-    Cse::Cse() {
-        this->parent = nullptr;
-    }
+    Cse::Cse() { this->parent = nullptr; }
 
-    Cse::Cse(Cse* parent) {
-        this->parent = parent;
-    }
+    Cse::Cse(Cse* parent) { this->parent = parent; }
 
-    Cse* Cse::get_parent() {
-        return this->parent;
-    }
+    Cse* Cse::get_parent() { return this->parent; }
 
     AstNode* Cse::pop_stack() {
         auto* node = stack.top();
         stack.pop();
         return node;
+    }
+
+    AstNode* Cse::pop_control() {
+        auto* con = this->control.top();
+        this->control.pop();
+        return con;
+    }
+
+    AstNode* Cse::read_stack() {
+        return this->stack.top();
     }
 
     void ast_to_cse(AstNode* ast, Cse* cse) {
@@ -90,13 +94,13 @@ namespace rpal::cse {
         cse->add_control(ast);
         AstNode* n;
         n = ast->get_left();
-        while(n != nullptr) {
+        while (n != nullptr) {
             ast_to_cse(n, cse);
             n = n->get_next();
         }
 
         n = ast->get_right();
-        while(n != nullptr) {
+        while (n != nullptr) {
             ast_to_cse(n, cse);
             n = n->get_next();
         }
@@ -113,41 +117,57 @@ namespace rpal::cse {
             }
             return st->get_value<int>();
         }
+        throw std::runtime_error("unknown resolve type");
+    }
+
+    namespace builtins {
+        void Print(AstNode* value) {
+            if (*value == NT::Int) {
+                std::cout << value->get_value<int>() << std::endl;
+            } else if (*value == NT::Str) {
+                std::cout << value->get_value<std::string>() << std::endl;
+            } else if (*value == NT::Bool) {
+                std::cout << value->get_value<bool>() << std::endl;
+            } else if (*value == NT::Nil) {
+                std::cout << "nil" << std::endl;
+            }
+        }
     }
 
     void execute(AstNode* ast) {
-
         // generate control stack
         Cse* cse = new Cse();
         ast_to_cse(ast, cse);
 
         while (true) {
+            if (cse->empty()) {
+                if (cse->get_parent() == nullptr) break;
+                cse = cse->get_parent(); // move to parent cse
+                continue;
+            }
+
             auto con = *cse->read_control();
-             if (con == NT::Id || con == NT::Int || con == NT::Bool || con == NT::Str || con == NT::Lambda) {
+            if (con == NT::Id || con == NT::Int || con == NT::Bool || con == NT::Str || con == NT::Lambda) {
                 cse->move_to_stack();
             } else if (con == NT::Add) {
+                cse->pop_control();
                 int val1 = cse_stack_resolve<int>(cse, NT::Int);
                 int val2 = cse_stack_resolve<int>(cse, NT::Int);
                 cse->add_stack(new AstNode(NT::Int, new int(val1 + val2)));
             } else if (con == NT::Gamma) {
-                auto con2 = *cse->pop_stack();
-                if (con2 == NT::Lambda) {
-                    auto key = con2.get_left()->get_value<std::string>();
-                    auto* value = cse->pop_stack();
-                    cse = (Cse*)con2.get_value();
-                    cse->set_env(key, value);
-                } else if (con2 == NT::Id) {
-                    auto name = con2.get_value<std::string>();
+                cse->pop_control();
+                auto* lambda = cse->pop_stack();
+                auto* argument = cse->pop_stack();
+                if (*lambda == NT::Lambda) {
+                    auto key = lambda->get_left()->get_value<std::string>();
+                    cse = (Cse*)lambda->get_value();
+                    cse->set_env(key, argument);
+                } else if (*lambda == NT::Id) {
+                    auto name = lambda->get_value<std::string>();
                     if (name == "Print") {
-                        std::cout << "print value" << std::endl;
+                        builtins::Print(argument);
                     }
                 }
-            }
-
-            // move to parent cse
-            if (cse->empty()) {
-                if (cse->get_parent() == nullptr) break;
-                cse = cse->get_parent();
             }
         }
     }

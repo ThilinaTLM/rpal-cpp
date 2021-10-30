@@ -62,15 +62,16 @@ namespace rpal::parser {
     }
 
     AstNode::~AstNode() {
-        if (this->value != nullptr) {
-            if (this->type == Type::Int) {
-                delete (int*)this->value;
-            } else if (this->type == Type::Bool) {
-                delete (bool*)this->value;
-            } else {
-                delete (std::string*)this->value;
-            }
-        }
+//        if (this->value != nullptr) {
+//            if (this->type == Type::Int) {
+//                delete (int*)this->value;
+//            } else if (this->type == Type::Bool) {
+//                delete (bool*)this->value;
+//            } else {
+//                delete (std::string*)this->value;
+//            }
+//        }
+
     }
 
     // AstNode overloads

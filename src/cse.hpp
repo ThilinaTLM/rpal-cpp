@@ -20,16 +20,16 @@ namespace rpal::cse {
         Cse* parent;
         std::stack<AstNode*> control;
         std::stack<AstNode*> stack;
-        std::unordered_map<std::string, AstNode*> env;
+        std::unordered_map<std::string, rpal::parser::AstNode*> env;
        public:
         explicit Cse();
         explicit Cse(Cse* parent);
-        AstNode *get_env(std::string &key);
+        AstNode* get_env(std::string &key);
         AstNode* read_control();
         Cse* get_parent();
         bool empty();
 
-        void set_env(const std::string& key, AstNode* value);
+        void set_env(std::string& key, rpal::parser::AstNode* value);
         void add_control(AstNode* node);
         void add_stack(AstNode* node);
         void move_to_stack();
@@ -37,6 +37,8 @@ namespace rpal::cse {
         template <class T>
         T pop_stack_value(rpal::parser::Type type);
         AstNode *pop_stack();
+        AstNode* pop_control();
+        AstNode* read_stack();
     };
 
     void execute(AstNode* ast);
