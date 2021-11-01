@@ -120,6 +120,15 @@ namespace rpal::cse {
         throw std::runtime_error("unknown resolve type");
     }
 
+    AstNode *cse_env_resolve(Cse *cse, NT type, AstNode* val_node) {
+        if (*val_node == type) return val_node;
+        if (*val_node == NT::Id) {
+            auto key = val_node->get_value<std::string>();
+            return cse->get_env(key);
+        }
+        throw std::runtime_error("invalid type");
+    }
+
     namespace builtins {
         void Print(AstNode* value) {
             if (*value == NT::Int) {
@@ -131,6 +140,20 @@ namespace rpal::cse {
             } else if (*value == NT::Nil) {
                 std::cout << "nil" << std::endl;
             }
+        }
+
+        AstNode* Add(AstNode* first, AstNode* second) {
+            if (*first != NT::Int || *second != NT::Int) throw std::runtime_error("cannot add non integers");
+            int val1 = first->get_value<int>();
+            int val2 = second->get_value<int>();
+            return new AstNode(NT::Int, new int(val1 + val2));
+        }
+
+        AstNode* Sub(AstNode* first, AstNode* second) {
+            if (*first != NT::Int || *second != NT::Int) throw std::runtime_error("cannot subtract non integers");
+            int val1 = first->get_value<int>();
+            int val2 = second->get_value<int>();
+            return new AstNode(NT::Int, new int(val1 - val2));
         }
     }
 
@@ -145,15 +168,18 @@ namespace rpal::cse {
                 cse = cse->get_parent(); // move to parent cse
                 continue;
             }
-
             auto con = *cse->read_control();
+
             if (con == NT::Id || con == NT::Int || con == NT::Bool || con == NT::Str || con == NT::Lambda) {
+                // move to stack
                 cse->move_to_stack();
-            } else if (con == NT::Add) {
+            } else if (con == NT::Add || con == NT::Sub || con == NT::Mul || con == NT::Div || con == NT::Pow) {
+                // arithmetic operations
                 cse->pop_control();
-                int val1 = cse_stack_resolve<int>(cse, NT::Int);
-                int val2 = cse_stack_resolve<int>(cse, NT::Int);
-                cse->add_stack(new AstNode(NT::Int, new int(val1 + val2)));
+                auto* first = cse_env_resolve(cse, NT::Int, cse->pop_stack());
+                auto* second = cse_env_resolve(cse, NT::Int, cse->pop_stack());
+                if (con == NT::Add) cse->add_stack(builtins::Add(first, second));
+                if (con == NT::Sub) cse->add_stack(builtins::Sub(first, second));
             } else if (con == NT::Gamma) {
                 cse->pop_control();
                 auto* lambda = cse->pop_stack();

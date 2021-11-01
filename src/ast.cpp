@@ -153,7 +153,9 @@ namespace rpal::parser {
     Token* AstNode::get_token() {
         return this->token;
     }
-
+    bool operator!=(AstNode& left, Type type) {
+        return !(left == type);
+    }
 
     // parser pre-made tokens
     namespace keywords {

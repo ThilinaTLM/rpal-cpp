@@ -77,10 +77,11 @@ namespace rpal::parser {
         friend std::ostream& operator<<(std::ostream& os, const AstNode& n);
         friend bool operator==(AstNode& left, AstNode& right);
         friend bool operator==(AstNode& left, Type type);
+        friend bool operator!=(AstNode& left, Type type);
 
         template <class T>
         T get_value() const;
-        const void* get_value() const;
+        [[nodiscard]] const void* get_value() const;
 
         void add_child(AstNode* node);
         void add_child_right(AstNode* node);
