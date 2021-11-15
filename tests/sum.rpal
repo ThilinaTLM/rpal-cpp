@@ -1,3 +1,0 @@
-let rec fac x = x eq 0 -> 1 | x * fac(x-1)
-in
-Print(fac(5))

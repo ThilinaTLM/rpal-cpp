@@ -722,6 +722,7 @@ namespace rpal::parser {
                         throw std::runtime_error("expect identifier after period");
                     }
                 }
+                return node_list;
             } else {
                 return node_first;
             }
@@ -748,14 +749,25 @@ namespace rpal::parser {
             delete head;
             return gamma;
 
+        } else if (*head == Type::Where) {
+            auto* assign = standard_ast(head->get_right());
+            if (*assign != Type::Assign) throw std::runtime_error("expect variable assignment");
+
+            auto* X = assign->get_left();
+            auto* E = assign->get_right();
+            auto* P = standard_ast(head->get_left());
+
+            auto* lambda = new AstNode(head->get_left()->get_token(), Type::Lambda, X, P);
+            auto* gamma = new AstNode(head->get_token(), Type::Gamma, lambda, E);
+            delete assign;
+            delete head;
+            return gamma;
+
         } else if (*head == Type::Fn) {
             auto* P = head->get_left();
             auto* Vs = P->get_next();
             P->clear_next();
-            auto* E = head->get_right();
-
-            // standardization
-            E = standard_ast(E);
+            auto* E = standard_ast(head->get_right());
 
             auto* lambda = new AstNode(Type::Lambda, Vs, E);
             auto* assign = new AstNode(head->get_token(), Type::Assign, P, lambda);
@@ -768,28 +780,14 @@ namespace rpal::parser {
             if (*assign != Type::Assign) throw std::runtime_error("expect assignment operator");
 
             auto* name = assign->get_left();
-            auto* E = assign->get_right();
-
-            // standardization
-            E = standard_ast(E);
+            auto* E = standard_ast(assign->get_right());
 
             auto* lambda = new AstNode(Type::Lambda, name, E);
             auto* gamma = new AstNode(Type::Gamma, Ystar, lambda);
             return new AstNode(Type::Assign, name, gamma);
 
-        } else if (*head == Type::Where) {
-            if (*head->get_right() != Type::Assign) throw std::runtime_error("expect variable assignment");
-            auto* X = standard_ast(head->get_right()->get_left());
-            auto* E = standard_ast(head->get_right()->get_right());
-            auto* P = standard_ast(head->get_left());
-            auto* lambda = new AstNode(head->get_left()->get_token(), Type::Lambda, X, P);
-            auto* gamma = new AstNode(head->get_token(), Type::Gamma, lambda, E);
-            delete head->get_left();
-            delete head;
-            return gamma;
-
-        } else if (*head == Type::Tau) {
-            auto* nil = new AstNode(Type::Nil);
+        }  else if (*head == Type::Tau) {
+            static auto* nil = new AstNode(Type::Nil);
             auto* val = standard_ast(head->get_left());
             auto* node_aug = new AstNode(head->get_token(), Type::Aug, nil, val);
             auto* p_val = val;
@@ -815,6 +813,7 @@ namespace rpal::parser {
             static auto* cond_node = new AstNode(Type::Id, new std::string("Cond"));
             static auto* no_arg = new AstNode(Type::NoArg);
             static auto* nil_node = new AstNode(Type::Nil);
+
             auto* B = standard_ast(head->get_left());
             auto* E1 = new AstNode(Type::Lambda, no_arg, standard_ast(head->get_right()));
             auto* E2 = new AstNode(Type::Lambda, no_arg, standard_ast(head->get_right()->get_next()));
@@ -824,6 +823,24 @@ namespace rpal::parser {
             auto* g3 = new AstNode(Type::Gamma, g2, E2);
             return new AstNode(Type::Gamma, g3, nil_node);
 
+        } else if (*head == Type::Within) {
+            auto* left_assign = standard_ast(head->get_left());
+            auto* right_assign = standard_ast(head->get_right());
+            if (*left_assign != Type::Assign) throw std::runtime_error("expect assignment left of within");
+            if (*right_assign != Type::Assign) throw std::runtime_error("expect assignment right of within");
+            auto* X1 = left_assign->get_left();
+            auto* E1 = left_assign->get_right();
+            auto* X2 = right_assign->get_left();
+            auto* E2 = right_assign->get_right();
+            auto* lambda = new AstNode(Type::Lambda, X1, E2);
+            auto* gamma = new AstNode(Type::Gamma, lambda, E1);
+            return new AstNode(Type::Assign, X2, gamma);
+
+        } else if (*head == Type::Add) {
+            auto* L = standard_ast(head->get_left());
+            auto* R = standard_ast(head->get_right());
+            head->set_left_child(L);
+            head->set_right_child(R);
         }
         return head;
     }

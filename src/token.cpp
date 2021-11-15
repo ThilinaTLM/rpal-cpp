@@ -6,6 +6,7 @@
 #define Semicolon(c) CharMatch(c, ';')
 #define Period(c) CharMatch(c, ',')
 #define Eol(c) CharMatch(c, '\n')
+#define Tab(c) CharMatch(c, '\t')
 #define Eof(c) CharMatch(c, 0)
 #define Underscore(c) CharMatch(c, '_')
 #define Space(c) CharMatch(c, ' ')
@@ -151,11 +152,11 @@ namespace rpal::token {
         [[maybe_unused]] bool Delete(TokenSource& src) {
             src.reset();
             char c = src.next();
-            if (Space(c) || Eol(c)) {
+            if (Space(c) || Eol(c) || Tab(c)) {
                 do {
                     c = src.next();
                 }
-                while(Space(c) || Eol(c)) ;
+                while(Space(c) || Eol(c) || Tab(c)) ;
                 return true;
             }
             return false;

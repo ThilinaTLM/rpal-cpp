@@ -1,3 +1,0 @@
-let rec P x = x eq 0 -> 0 | x+P(x-1)
-in
-Print(P 5)

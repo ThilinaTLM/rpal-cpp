@@ -3,6 +3,7 @@
 //
 
 #include "cse.hpp"
+
 #include <cmath>
 
 namespace rpal::cse {
@@ -35,28 +36,24 @@ namespace rpal::cse {
         this->control.pop();
     }
 
-    void Cse::add_original(AstNode* node) {
-        this->original.push_back(node);
-    }
+    void Cse::add_original(AstNode* node) { this->original.push_back(node); }
 
     void Cse::reset() {
-        while(!this->control.empty()) this->control.pop();
-        while(!this->stack.empty()) this->stack.pop();
-        for (auto ctrl: this->original) {
+        while (!this->control.empty()) this->control.pop();
+        while (!this->stack.empty()) this->stack.pop();
+        for (auto ctrl : this->original) {
             this->add_control(ctrl);
         }
     }
 
     void Cse::add_stack(AstNode* node) { this->stack.push(node); }
 
-    void Cse::set_env(std::string& key, rpal::parser::AstNode* value) {
-        this->env[key] = value;
-    }
+    void Cse::set_env(std::string& key, rpal::parser::AstNode* value) { this->env[key] = value; }
 
     AstNode* Cse::get_env(std::string& key) {
         if (this->env.find(key) == env.end()) {
             if (this->parent == nullptr)
-                throw std::runtime_error("undefined variable");
+                throw std::runtime_error("undefined variable " + key);
             else
                 return this->parent->get_env(key);
         }
@@ -76,11 +73,11 @@ namespace rpal::cse {
 
     Cse* Cse::copy() {
         auto* cse = new Cse(this->parent);
-        for (auto* n: this->original) {
+        for (auto* n : this->original) {
             cse->add_original(n);
         }
 
-        for (const auto& entry: this->env) {
+        for (const auto& entry : this->env) {
             cse->set_env(const_cast<std::string&>(entry.first), entry.second);
         }
         return cse;
@@ -101,10 +98,7 @@ namespace rpal::cse {
         return con;
     }
 
-    AstNode* Cse::read_stack() {
-        return this->stack.top();
-    }
-
+    AstNode* Cse::read_stack() { return this->stack.top(); }
 
     void ast_to_cse(AstNode* ast, Cse* cse) {
         if (*ast == NT::Lambda) {
@@ -132,11 +126,9 @@ namespace rpal::cse {
         }
     }
 
-    void cse_set_primitive_env(Cse* cse, std::string* kv) {
-        cse->set_env(*kv, new AstNode(NT::Id, kv));
-    }
+    void cse_set_primitive_env(Cse* cse, std::string* kv) { cse->set_env(*kv, new AstNode(NT::Id, kv)); }
 
-    AstNode *cse_env_resolve(Cse *cse, AstNode* val_node) {
+    AstNode* cse_env_resolve(Cse* cse, AstNode* val_node) {
         if (*val_node == NT::Id) {
             auto key = val_node->get_value<std::string>();
             return cse->get_env(key);
@@ -144,7 +136,7 @@ namespace rpal::cse {
         return val_node;
     }
 
-    AstNode *cse_env_resolve(Cse *cse, NT type, AstNode* val_node) {
+    AstNode* cse_env_resolve(Cse* cse, NT type, AstNode* val_node) {
         if (*val_node == type) return val_node;
         if (*val_node == NT::Id) {
             auto key = val_node->get_value<std::string>();
@@ -163,7 +155,7 @@ namespace rpal::cse {
             static auto* node = new AstNode(NT::Bool, new bool(false));
             return node;
         }
-    }
+    }  // namespace prebuilt
 
     namespace builtins {
         void Print(AstNode* value) {
@@ -233,24 +225,40 @@ namespace rpal::cse {
             return new AstNode(NT::Int, new bool(val1 and val2));
         }
 
-
         AstNode* B_Eq(AstNode* first, AstNode* second) {
             if (first->get_type() != second->get_type()) return prebuilt::node_false();
             if (first->get_value() == second->get_value()) return prebuilt::node_true();
             bool res;
-            if (*first == NT::Int) res = ((first->get_value<int>()) == (second->get_value<int>()));
-            else if (*first == NT::Str) res = ((first->get_value<std::string>()) == (second->get_value<std::string>()));
-            else if (*first == NT::Bool) res = ((first->get_value<bool>()) == (second->get_value<bool>()));
-            else if (*first == NT::Nil || *first == NT::Dummy) res = true;
-            else throw std::runtime_error("incompatible operator 'eq'");
-            return (res)? prebuilt::node_true(): prebuilt::node_false();
+            if (*first == NT::Int)
+                res = ((first->get_value<int>()) == (second->get_value<int>()));
+            else if (*first == NT::Str)
+                res = ((first->get_value<std::string>()) == (second->get_value<std::string>()));
+            else if (*first == NT::Bool)
+                res = ((first->get_value<bool>()) == (second->get_value<bool>()));
+            else if (*first == NT::Nil || *first == NT::Dummy)
+                res = true;
+            else
+                throw std::runtime_error("incompatible operator 'eq'");
+            return (res) ? prebuilt::node_true() : prebuilt::node_false();
         }
 
         AstNode* B_Ne(AstNode* first, AstNode* second) {
             auto* eq_res = B_Eq(first, second);
-            return (eq_res == prebuilt::node_true())? prebuilt::node_false(): prebuilt::node_true();
+            return (eq_res == prebuilt::node_true()) ? prebuilt::node_false() : prebuilt::node_true();
         }
-    }
+
+        AstNode* Order(AstNode* pNode) {
+            if (*pNode != NT::ArgList) throw std::runtime_error("Order function cannot be work with non-tuples");
+            int count = 0;
+            auto *arg = pNode->get_left();
+            while (arg != nullptr) {
+                ++count;
+                arg = arg->get_next();
+            }
+            return new AstNode(NT::Int, new int(count));
+        }
+
+    }  // namespace builtins
 
     void execute(AstNode* ast) {
         // Create Primitive CSE
@@ -260,6 +268,7 @@ namespace rpal::cse {
         cse_set_primitive_env(cse, new std::string("Print"));
         cse_set_primitive_env(cse, new std::string("Cond"));
         cse_set_primitive_env(cse, new std::string("Ystar"));
+        cse_set_primitive_env(cse, new std::string("Order"));
 
         // Fill control set structure
         ast_to_cse(ast, cse);
@@ -281,8 +290,8 @@ namespace rpal::cse {
             }
             auto con = *cse->read_control();
 
-            if (con == NT::Id || con == NT::Int || con == NT::Bool || con == NT::Str ||
-                con == NT::Lambda || con == NT::Nil || con == NT::Dummy || con == NT::NoArg) {
+            if (con == NT::Id || con == NT::Int || con == NT::Bool || con == NT::Str || con == NT::Lambda ||
+                con == NT::Nil || con == NT::Dummy || con == NT::NoArg) {
                 cse->move_to_stack();
 
             } else if (con == NT::Add || con == NT::Sub || con == NT::Mul || con == NT::Div || con == NT::Pow) {
@@ -304,7 +313,8 @@ namespace rpal::cse {
                 if (con == NT::B_Or) cse->add_stack(builtins::B_Or(first, second));
                 if (con == NT::B_And) cse->add_stack(builtins::B_And(first, second));
 
-            } else if (con == NT::B_Gr || con == NT::B_Ge || con == NT::B_Ls || con == NT::B_Le || con == NT::B_Eq || con == NT::B_Ne) {
+            } else if (con == NT::B_Gr || con == NT::B_Ge || con == NT::B_Ls || con == NT::B_Le || con == NT::B_Eq ||
+                       con == NT::B_Ne) {
                 // comparison operations
                 cse->pop_control();
                 auto* first = cse_env_resolve(cse, cse->pop_stack());
@@ -317,26 +327,44 @@ namespace rpal::cse {
 
                 auto* lambda = cse->pop_stack();
                 auto* argument = cse->pop_stack();
+
+                // resolve lambda and argument from environment
                 if (*lambda == NT::Id) lambda = cse_env_resolve(cse, lambda);
                 if (*argument == NT::Id) argument = cse_env_resolve(cse, argument);
 
                 if (*lambda == NT::Lambda) {
                     if (*lambda->get_left() == NT::NoArg) {
                         cse = ((Cse*)lambda->get_value())->copy()->set_parent(cse);
+
+                    } else if (*lambda->get_left() == NT::ArgList) {
+                        if (*argument != NT::ArgList) throw std::runtime_error("not enough arguments for function call");
+                        cse = ((Cse*)lambda->get_value())->copy()->set_parent(cse);
+                        auto* arg_name = lambda->get_left()->get_left();
+                        auto* arg_value = argument->get_left();
+                        while (arg_name != nullptr) {
+                            auto key = arg_name->get_value<std::string>();
+                            if (arg_value == nullptr) throw std::runtime_error("not enough arguments for function call");
+                            cse->set_env(key, arg_value);
+                            arg_name = arg_name->get_next();
+                            arg_value = arg_value->get_next();
+                        }
+                        if (arg_value != nullptr) throw std::runtime_error("more arguments provided function call");
+
                     } else {
                         auto key = lambda->get_left()->get_value<std::string>();
                         cse = ((Cse*)lambda->get_value())->copy()->set_parent(cse);
                         cse->set_env(key, argument);
                     }
                     cse->reset();
-                } else if (*lambda == NT::Id) {
+                }
+                else if (*lambda == NT::Id) {
                     auto name = lambda->get_value<std::string>();
                     if (name == "Print") {
                         builtins::Print(argument);
                     } else if (name == "Cond") {
                         if (*argument != NT::Bool) throw std::runtime_error("invalid condition");
                         cse->pop_control();
-                        cse->pop_control(); // pop two gammas
+                        cse->pop_control();  // pop two gammas
                         auto* lambda1 = cse->pop_stack();
                         auto* lambda2 = cse->pop_stack();
                         if (argument->get_value<bool>()) {
@@ -344,15 +372,42 @@ namespace rpal::cse {
                         } else {
                             cse->add_stack(lambda2);
                         }
-
                     } else if (name == "Ystar") {
                         auto fn_name = argument->get_left()->get_value<std::string>();
-                        auto arg_cse = *(Cse*)argument->get_value(); arg_cse.reset();
+                        auto arg_cse = *(Cse*)argument->get_value();
+                        arg_cse.reset();
                         auto* arg_lambda = arg_cse.pop_control();
                         ((Cse*)arg_lambda->get_value())->set_env(*new std::string(fn_name), arg_lambda);
                         cse->add_stack(arg_lambda);
+
+                    } else if (name == "Order") {
+                        auto *count = builtins::Order(argument);
+                        cse->add_stack(count);
                     }
                 }
+                else if (*lambda == NT::ArgList) {
+                    if (*argument != NT::Int) throw std::runtime_error("tuple index must be an integer");
+                    int index = argument->get_value<int>();
+                    if (index < 1) throw std::runtime_error("tuple index out of range");
+                    auto* value = lambda->get_left();
+                    if (value == nullptr) throw std::runtime_error("tuple index out of range");
+                    while(index-- > 1) {
+                        value = value->get_next();
+                        if (value == nullptr) throw std::runtime_error("tuple index out of range");
+                    }
+                    cse->add_stack(value);
+                }
+            } else if (con == NT::Aug) {
+                cse->pop_control();
+                auto* arg_list = cse_env_resolve(cse, cse->pop_stack());
+                auto* second = cse_env_resolve(cse, cse->pop_stack());
+                if (*arg_list == NT::Nil) {
+                    arg_list = new AstNode(NT::ArgList);
+                }
+                if (*arg_list != NT::ArgList)throw std::runtime_error("Cannot use aug with non tuples");
+                second->clear_next();
+                arg_list->add_child_left(second);
+                cse->add_stack(arg_list);
             }
         }
     }
