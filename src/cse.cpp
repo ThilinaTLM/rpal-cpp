@@ -158,21 +158,39 @@ namespace rpal::cse {
     }  // namespace prebuilt
 
     namespace builtins {
-        void Print(AstNode* value) {
+
+        void _print(AstNode* value) {
             if (*value == NT::Int) {
-                std::cout << value->get_value<int>() << std::endl;
+                std::cout << value->get_value<int>();
             } else if (*value == NT::Str) {
-                std::cout << value->get_value<std::string>() << std::endl;
+                std::cout << value->get_value<std::string>();
             } else if (*value == NT::Bool) {
                 if (value->get_value<bool>()) {
-                    std::cout << "true" << std::endl;
+                    std::cout << "true";
                 } else {
-                    std::cout << "false" << std::endl;
+                    std::cout << "false";
                 }
             } else if (*value == NT::Nil) {
-                std::cout << "nil" << std::endl;
+                std::cout << "nil";
             } else if (*value == NT::Dummy) {
-                std::cout << "" << std::endl;
+                std::cout << "";
+            }
+        }
+
+        void Print(AstNode* value) {
+             if (*value == NT::ArgList) {
+                auto* v = value->get_left();
+                _print(v);
+                v = v->get_next();
+                while (v != nullptr) {
+                    std::cout << ", ";
+                    _print(v);
+                    v = v->get_next();
+                }
+                std::cout << std::endl;
+            } else {
+                _print(value);
+                std::cout << std::endl;
             }
         }
 
@@ -211,18 +229,52 @@ namespace rpal::cse {
             return new AstNode(NT::Int, new int((int)std::pow(val1, val2)));
         }
 
+        AstNode* Neg(AstNode* first) {
+            if (*first != NT::Int) throw std::runtime_error("cannot apply neg to non integers");
+            int val1 = first->get_value<int>();
+            return new AstNode(NT::Int, new int(-val1));
+        }
+
+        AstNode* B_Gr(AstNode* first, AstNode* second) {
+            if (*first != NT::Int || *second != NT::Int) throw std::runtime_error("cannot compare non integers");
+            int val1 = first->get_value<int>();
+            int val2 = second->get_value<int>();
+            return new AstNode(NT::Bool, new bool(val1 > val2));
+        }
+
+        AstNode* B_Ge(AstNode* first, AstNode* second) {
+            if (*first != NT::Int || *second != NT::Int) throw std::runtime_error("cannot compare non integers");
+            int val1 = first->get_value<int>();
+            int val2 = second->get_value<int>();
+            return new AstNode(NT::Bool, new bool(val1 >= val2));
+        }
+
+        AstNode* B_Ls(AstNode* first, AstNode* second) {
+            if (*first != NT::Int || *second != NT::Int) throw std::runtime_error("cannot compare non integers");
+            int val1 = first->get_value<int>();
+            int val2 = second->get_value<int>();
+            return new AstNode(NT::Bool, new bool(val1 < val2));
+        }
+
+        AstNode* B_Le(AstNode* first, AstNode* second) {
+            if (*first != NT::Int || *second != NT::Int) throw std::runtime_error("cannot compare non integers");
+            int val1 = first->get_value<int>();
+            int val2 = second->get_value<int>();
+            return new AstNode(NT::Bool, new bool(val1 <= val2));
+        }
+
         AstNode* B_Or(AstNode* first, AstNode* second) {
             if (*first != NT::Bool || *second != NT::Bool) throw std::runtime_error("cannot bool or non bool");
             int val1 = first->get_value<bool>();
             int val2 = second->get_value<bool>();
-            return new AstNode(NT::Int, new bool(val1 or val2));
+            return new AstNode(NT::Bool, new bool(val1 or val2));
         }
 
         AstNode* B_And(AstNode* first, AstNode* second) {
             if (*first != NT::Bool || *second != NT::Bool) throw std::runtime_error("cannot bool and non bool");
             int val1 = first->get_value<bool>();
             int val2 = second->get_value<bool>();
-            return new AstNode(NT::Int, new bool(val1 and val2));
+            return new AstNode(NT::Bool, new bool(val1 and val2));
         }
 
         AstNode* B_Eq(AstNode* first, AstNode* second) {
@@ -247,6 +299,12 @@ namespace rpal::cse {
             return (eq_res == prebuilt::node_true()) ? prebuilt::node_false() : prebuilt::node_true();
         }
 
+        AstNode* B_Not(AstNode* first) {
+            if (*first != NT::Bool) throw std::runtime_error("cannot apply not to non bool");
+            int val1 = first->get_value<bool>();
+            return new AstNode(NT::Bool, new bool(not val1));
+        }
+
         AstNode* Order(AstNode* pNode) {
             if (*pNode != NT::ArgList) throw std::runtime_error("Order function cannot be work with non-tuples");
             int count = 0;
@@ -256,6 +314,38 @@ namespace rpal::cse {
                 arg = arg->get_next();
             }
             return new AstNode(NT::Int, new int(count));
+        }
+
+        AstNode* Null(AstNode* tuple) {
+            auto eq = *tuple == NT::Nil;
+            return (eq) ? prebuilt::node_true() : prebuilt::node_false();
+        }
+
+        AstNode* IsDataType(AstNode* node, NT type) {
+            auto eq = *node == type;
+            return (eq) ? prebuilt::node_true() : prebuilt::node_false();
+        }
+
+        AstNode* Stem(AstNode* node) {
+            if (*node != NT::Str) throw std::runtime_error("Cannot apply stem to non-strings");
+            auto val = node->get_value<std::string>();
+            return new AstNode(NT::Str, new std::string(val.substr(0, 1)));
+        }
+
+        AstNode* Stern(AstNode* node) {
+            if (*node != NT::Str) throw std::runtime_error("Cannot apply stem to non-strings");
+            auto val = node->get_value<std::string>();
+            return new AstNode(NT::Str, new std::string(val.substr(1, val.length() - 1)));
+        }
+
+        AstNode* Conc(AstNode* args) {
+            auto* s1 = args->get_left();
+            if (*s1 != NT::Str) throw std::runtime_error("Cannot apply stem to non-strings; use brackets with Conc");
+            auto* s2 = s1->get_next();
+            if (*s2 != NT::Str) throw std::runtime_error("Cannot apply stem to non-strings; use brackets with Conc");
+            auto val1 = s1->get_value<std::string>();
+            auto val2 = s2->get_value<std::string>();
+            return new AstNode(NT::Str, new std::string(val1 + val2));
         }
 
     }  // namespace builtins
@@ -269,6 +359,18 @@ namespace rpal::cse {
         cse_set_primitive_env(cse, new std::string("Cond"));
         cse_set_primitive_env(cse, new std::string("Ystar"));
         cse_set_primitive_env(cse, new std::string("Order"));
+        cse_set_primitive_env(cse, new std::string("Null"));
+
+        cse_set_primitive_env(cse, new std::string("Isinteger"));
+        cse_set_primitive_env(cse, new std::string("Istruthvalue"));
+        cse_set_primitive_env(cse, new std::string("Isstring"));
+        cse_set_primitive_env(cse, new std::string("Istuple"));
+        cse_set_primitive_env(cse, new std::string("Isfunction"));
+        cse_set_primitive_env(cse, new std::string("Isdummy"));
+
+        cse_set_primitive_env(cse, new std::string("Stem"));
+        cse_set_primitive_env(cse, new std::string("Stern"));
+        cse_set_primitive_env(cse, new std::string("Conc"));
 
         // Fill control set structure
         ast_to_cse(ast, cse);
@@ -305,6 +407,12 @@ namespace rpal::cse {
                 if (con == NT::Div) cse->add_stack(builtins::Div(first, second));
                 if (con == NT::Pow) cse->add_stack(builtins::Pow(first, second));
 
+            } else if (con == NT::Neg) {
+                    // arithmetic binary operations
+                    cse->pop_control();
+                    auto* first = cse_env_resolve(cse, NT::Int, cse->pop_stack());
+                    if (con == NT::Neg) cse->add_stack(builtins::Neg(first));
+
             } else if (con == NT::B_Or || con == NT::B_And) {
                 // boolean binary operations
                 cse->pop_control();
@@ -321,6 +429,15 @@ namespace rpal::cse {
                 auto* second = cse_env_resolve(cse, cse->pop_stack());
                 if (con == NT::B_Eq) cse->add_stack(builtins::B_Eq(first, second));
                 if (con == NT::B_Ne) cse->add_stack(builtins::B_Ne(first, second));
+
+                if (con == NT::B_Gr) cse->add_stack(builtins::B_Gr(first, second));
+                if (con == NT::B_Ge) cse->add_stack(builtins::B_Ge(first, second));
+                if (con == NT::B_Ls) cse->add_stack(builtins::B_Ls(first, second));
+                if (con == NT::B_Le) cse->add_stack(builtins::B_Le(first, second));
+            } else if (con == NT::B_Not) {
+                cse->pop_control();
+                auto* first = cse_env_resolve(cse, cse->pop_stack());
+                if (con == NT::B_Not) cse->add_stack(builtins::B_Not(first));
 
             } else if (con == NT::Gamma) {
                 cse->pop_control();
@@ -380,10 +497,19 @@ namespace rpal::cse {
                         ((Cse*)arg_lambda->get_value())->set_env(*new std::string(fn_name), arg_lambda);
                         cse->add_stack(arg_lambda);
 
-                    } else if (name == "Order") {
-                        auto *count = builtins::Order(argument);
-                        cse->add_stack(count);
                     }
+                    else if (name == "Order") cse->add_stack(builtins::Order(argument));
+                    else if (name == "Null") cse->add_stack(builtins::Null(argument));
+                    else if (name == "Isinteger") cse->add_stack(builtins::IsDataType(argument, NT::Int));
+                    else if (name == "Istruthvalue") cse->add_stack(builtins::IsDataType(argument, NT::Bool));
+                    else if (name == "Isstring") cse->add_stack(builtins::IsDataType(argument, NT::Str));
+                    else if (name == "Istuple") cse->add_stack(builtins::IsDataType(argument, NT::ArgList));
+                    else if (name == "Isfunction") cse->add_stack(builtins::IsDataType(argument, NT::Lambda));
+                    else if (name == "Isdummy") cse->add_stack(builtins::IsDataType(argument, NT::Dummy));
+
+                    else if (name == "Stem") cse->add_stack(builtins::Stem(argument));
+                    else if (name == "Stern") cse->add_stack(builtins::Stern(argument));
+                    else if (name == "Conc") cse->add_stack(builtins::Conc(argument));
                 }
                 else if (*lambda == NT::ArgList) {
                     if (*argument != NT::Int) throw std::runtime_error("tuple index must be an integer");

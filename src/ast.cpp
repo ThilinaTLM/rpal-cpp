@@ -22,8 +22,8 @@ namespace rpal::parser {
     std::ostream& operator<<(std::ostream& os, const Type& nt) {
         static const char* node_types[] = {"let", "lambda", "where", "gamma",   "@",    "rec",      "within", "tau",
                                            "aug", "->",     "and",   "=",       "ID",   "fcn_form", "()",     ",",
-                                           "+",   "-",      "*",     "/",       "neg",  "**",       "or",     "&",
-                                           "not", "gr",     "ge",    "ls",      "le",   "eq",       "ne",     "INT",
+                                           "+",   "-",      "*",     "/",       "neg",  "**",       "or",     "not",
+                                           "&",   "gr",     "ge",    "ls",      "le",   "eq",       "ne",     "INT",
                                            "STR", "BOOL",   "nil",   "unknown", "dummy"};
         os << node_types[nt];
         return os;
@@ -412,7 +412,7 @@ namespace rpal::parser {
         if (t == operators::bool_and()) {
             forward();
             AstNode* node_Bt = parse_Bt();
-            auto* node = new AstNode(&t, Type::And, node_Bs, node_Bt);
+            auto* node = new AstNode(&t, Type::B_And, node_Bs, node_Bt);
             return node;
         }
         return node_Bs;
@@ -422,7 +422,8 @@ namespace rpal::parser {
         Token t = getToken();
         if (t == operators::bool_not()) {
             forward();
-            return new AstNode(&t, Type::B_Not, parse_Bp());
+            auto* node_Bp = parse_Bp();
+            return new AstNode(&t, Type::B_Not, node_Bp, nullptr);
         }
         return parse_Bp();
     }
@@ -582,7 +583,8 @@ namespace rpal::parser {
         }
         if (t == TT::Str) {
             Token t2 = getForward();
-            return new AstNode(&t2, Type::Str, new std::string(t2.get_value<std::string>()));
+            auto value = t2.get_value<std::string>();
+            return new AstNode(&t2, Type::Str, new std::string(value.substr(1, value.length() - 2)));
         }
         if (t == TT::Int) {
             Token t2 = getForward();
@@ -599,6 +601,10 @@ namespace rpal::parser {
         if (t == keywords::v_nil()) {
             Token t2 = getForward();
             return new AstNode(&t2, Type::Nil);
+        }
+        if (t == keywords::v_dummy()) {
+            Token t2 = getForward();
+            return new AstNode(&t2, Type::Dummy);
         }
 
         throw std::runtime_error("unknown token");
@@ -740,8 +746,8 @@ namespace rpal::parser {
         if (*head == Type::Let) {
             auto* assign = standard_ast(head->get_left());
             if (*assign != Type::Assign) throw std::runtime_error("expect assignment operator");
-            auto* X = assign->get_left();
-            auto* E = assign->get_right();
+            auto* X = standard_ast(assign->get_left());
+            auto* E = standard_ast(assign->get_right());
             auto* P = standard_ast(head->get_right());
             auto* lambda = new AstNode(head->get_left()->get_token(), Type::Lambda, X, P);
             auto* gamma = new AstNode(head->get_token(), Type::Gamma, lambda, E);
@@ -753,8 +759,8 @@ namespace rpal::parser {
             auto* assign = standard_ast(head->get_right());
             if (*assign != Type::Assign) throw std::runtime_error("expect variable assignment");
 
-            auto* X = assign->get_left();
-            auto* E = assign->get_right();
+            auto* X = standard_ast(assign->get_left());
+            auto* E = standard_ast(assign->get_right());
             auto* P = standard_ast(head->get_left());
 
             auto* lambda = new AstNode(head->get_left()->get_token(), Type::Lambda, X, P);
@@ -836,11 +842,23 @@ namespace rpal::parser {
             auto* gamma = new AstNode(Type::Gamma, lambda, E1);
             return new AstNode(Type::Assign, X2, gamma);
 
-        } else if (*head == Type::Add) {
+        } else if (
+            *head == Type::Add || *head == Type::Sub || *head == Type::Mul || *head == Type::Div || *head == Type::Pow ||
+            *head == Type::B_Eq || *head == Type::B_Ne || *head == Type::B_Ls || *head == Type::B_Le ||
+            *head == Type::B_Gr || *head == Type::B_Ge || *head == Type::B_Or ||  *head == Type::B_And
+                   ) {
             auto* L = standard_ast(head->get_left());
             auto* R = standard_ast(head->get_right());
             head->set_left_child(L);
             head->set_right_child(R);
+        } else if (*head == Type::Gamma || *head == Type::Lambda) {
+            auto* L = standard_ast(head->get_left());
+            auto* R = standard_ast(head->get_right());
+            head->set_left_child(L);
+            head->set_right_child(R);
+        } else if (*head == Type::Neg || *head == Type::B_Not) {
+            auto* L = standard_ast(head->get_left());
+            head->set_left_child(L);
         }
         return head;
     }

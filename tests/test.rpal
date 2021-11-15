@@ -1,3 +1,1 @@
-let P(x) = Print(x 2)
-    in
-P(3,7)
+Print(Conc("Hello", "World"))
