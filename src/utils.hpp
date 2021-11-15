@@ -10,6 +10,7 @@ namespace rpal::options {
     struct params {
         bool help = false;
         bool ast = false;
+        bool st = false;
         bool tokens = false;
         std::string filename;
 

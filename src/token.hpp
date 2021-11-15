@@ -7,10 +7,10 @@
 
 namespace rpal::token {
 
-    typedef enum { Id, Int, Op, Str, Sp, Cmt, Pun, Key } Type;
+    typedef enum { Id, Int, Op, Str, Sp, Cmt, Pun, Key, End } Type;
 
     static const char* token_types[] = {"Identifier", "Integer", "Operator",    "String",
-                                        "Delete",     "Comment", "Punctuation", "Keyword"};
+                                        "Delete",     "Comment", "Punctuation", "Keyword", "End"};
     std::ostream& operator<<(std::ostream& os, Type t);
 
     struct Token {

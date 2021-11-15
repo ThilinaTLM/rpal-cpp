@@ -55,6 +55,7 @@ namespace rpal::parser {
         Bool,
         Nil,
         Unknown,
+        Dummy,
     } Type;
     std::ostream& operator<<(std::ostream& os, const Type& n);
 
@@ -68,9 +69,11 @@ namespace rpal::parser {
         rpal::token::Token* token{};
 
        public:
+        explicit AstNode(Type type);
         AstNode(Token* token, Type type);
         AstNode(Type type, const void* value);
         AstNode(Token* token, Type type, const void* value);
+        AstNode(Type type, AstNode* left, AstNode* right);
         AstNode(Token* token, Type type, AstNode* left, AstNode* right);
         ~AstNode();
 
@@ -83,12 +86,18 @@ namespace rpal::parser {
         T get_value() const;
         [[nodiscard]] const void* get_value() const;
 
-        void add_child(AstNode* node);
+        void add_child_left(AstNode* node);
         void add_child_right(AstNode* node);
+        void set_left_child(AstNode* node);
+        void set_right_child(AstNode* node);
+        void clear_relations();
+        void clear_next();
+
         AstNode* get_left();
         AstNode* get_right();
         AstNode* get_next();
         Token* get_token();
+        Type get_type();
         bool leave();
     };
 
@@ -118,11 +127,14 @@ namespace rpal::parser {
 
         AstNode* parse_Dr();
 
+        AstNode* parse_Db();
+
         AstNode* parse_Ew();
 
         AstNode* parse_T();
 
         AstNode* parse_Ta();
+        AstNode* parse_Ta_(AstNode* left);
 
         AstNode* parse_Tc();
 
@@ -135,8 +147,10 @@ namespace rpal::parser {
         AstNode* parse_Bp();
 
         AstNode* parse_A();
+        AstNode* parse_A_(AstNode* left);
 
         AstNode* parse_At();
+        AstNode* parse_At_(AstNode* left);
 
         AstNode* parse_Af();
 
@@ -145,8 +159,6 @@ namespace rpal::parser {
         AstNode* parse_R();
 
         AstNode* parse_Rn();
-
-        AstNode* parse_Db();
 
         AstNode* parse_Vl();
 

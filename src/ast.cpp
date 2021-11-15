@@ -4,10 +4,10 @@
 
 #include "ast.hpp"
 
-#define d_token(name, type, value)                                      \
-    token::Token name() {                                               \
-        const static token::Token t = {type, new std::string(value)};   \
-        return t;                                                       \
+#define d_token(name, type, value)                                    \
+    token::Token name() {                                             \
+        const static token::Token t = {type, new std::string(value)}; \
+        return t;                                                     \
     }
 
 #define d_operator(name, value) d_token(name, token::Type::Op, value)
@@ -17,15 +17,25 @@
 #define d_keyword_same(name) d_token(name, token::Type::Key, #name)
 
 namespace rpal::parser {
+
     // Node Type
     std::ostream& operator<<(std::ostream& os, const Type& nt) {
-        static const char* node_types[] = {
-            "let", "lambda",   "where", "gamma", "@",  "rec", "within", "tau", "aug", "->",   "and", "=",
-            "ID",  "fcn_form", "()",    ",",     "+",  "-",   "*",      "/",   "neg", "**",   "or",  "&",
-            "not", "gr",       "ge",    "ls",    "le", "eq",  "ne",     "INT", "STR", "BOOL", "nil", "unknown",
-        };
+        static const char* node_types[] = {"let", "lambda", "where", "gamma",   "@",    "rec",      "within", "tau",
+                                           "aug", "->",     "and",   "=",       "ID",   "fcn_form", "()",     ",",
+                                           "+",   "-",      "*",     "/",       "neg",  "**",       "or",     "&",
+                                           "not", "gr",     "ge",    "ls",      "le",   "eq",       "ne",     "INT",
+                                           "STR", "BOOL",   "nil",   "unknown", "dummy"};
         os << node_types[nt];
         return os;
+    }
+
+    AstNode::AstNode(Type type) {
+        this->type = type;
+        this->token = nullptr;
+        this->left = nullptr;
+        this->right = nullptr;
+        this->next = nullptr;
+        this->value = nullptr;
     }
 
     // Ast Node constructors
@@ -47,6 +57,15 @@ namespace rpal::parser {
         this->next = nullptr;
     }
 
+    AstNode::AstNode(Type type, AstNode* left, AstNode* right) {
+        this->type = type;
+        this->token = nullptr;
+        this->value = nullptr;
+        this->left = left;
+        this->right = right;
+        this->next = nullptr;
+    }
+
     AstNode::AstNode(Token* token, Type type, AstNode* left, AstNode* right) {
         this->type = type;
         this->token = token;
@@ -62,16 +81,15 @@ namespace rpal::parser {
     }
 
     AstNode::~AstNode() {
-//        if (this->value != nullptr) {
-//            if (this->type == Type::Int) {
-//                delete (int*)this->value;
-//            } else if (this->type == Type::Bool) {
-//                delete (bool*)this->value;
-//            } else {
-//                delete (std::string*)this->value;
-//            }
-//        }
-
+        //        if (this->value != nullptr) {
+        //            if (this->type == Type::Int) {
+        //                delete (int*)this->value;
+        //            } else if (this->type == Type::Bool) {
+        //                delete (bool*)this->value;
+        //            } else {
+        //                delete (std::string*)this->value;
+        //            }
+        //        }
     }
 
     // AstNode overloads
@@ -112,11 +130,9 @@ namespace rpal::parser {
         return *(T*)this->value;
     }
 
-    const void* AstNode::get_value() const {
-        return this->value;
-    }
+    const void* AstNode::get_value() const { return this->value; }
 
-    void AstNode::add_child(AstNode* node) {
+    void AstNode::add_child_left(AstNode* node) {
         if (this->left == nullptr) {
             this->left = node;
             return;
@@ -136,26 +152,28 @@ namespace rpal::parser {
         last->next = node;
     }
 
-    AstNode* AstNode::get_left() {
-        return this->left;
+    void AstNode::set_left_child(AstNode* node) { this->left = node; }
+
+    void AstNode::set_right_child(AstNode* node) { this->right = node; }
+
+    void AstNode::clear_relations() {
+        this->left = nullptr;
+        this->right = nullptr;
+        this->next = nullptr;
     }
 
-    AstNode* AstNode::get_right() {
-        return this->right;
-    }
-    AstNode* AstNode::get_next() {
-        return this->next;
-    }
-    bool AstNode::leave() {
-        return (this->left == nullptr) && (this->right == nullptr);
-    }
+    void AstNode::clear_next() { this->next = nullptr; }
 
-    Token* AstNode::get_token() {
-        return this->token;
-    }
-    bool operator!=(AstNode& left, Type type) {
-        return !(left == type);
-    }
+    AstNode* AstNode::get_left() { return this->left; }
+
+    AstNode* AstNode::get_right() { return this->right; }
+    AstNode* AstNode::get_next() { return this->next; }
+    bool AstNode::leave() { return (this->left == nullptr) && (this->right == nullptr); }
+
+    Token* AstNode::get_token() { return this->token; }
+    bool operator!=(AstNode& left, Type type) { return !(left == type); }
+
+    Type AstNode::get_type() { return this->type; }
 
     // parser pre-made tokens
     namespace keywords {
@@ -163,25 +181,25 @@ namespace rpal::parser {
 
             d_keyword_same(in)
 
-            d_keyword_same(fn)
+                d_keyword_same(fn)
 
-                d_keyword_same(where)
+                    d_keyword_same(where)
 
-                    d_keyword_same(aug)
+                        d_keyword_same(aug)
 
-                        d_keyword_same(within)
+                            d_keyword_same(within)
 
-                            d_keyword(and_kw, "and")
+                                d_keyword(and_kw, "and")
 
-                                d_keyword_same(rec)
+                                    d_keyword_same(rec)
 
-                                    d_keyword(v_true, "true")
+                                        d_keyword(v_true, "true")
 
-                                        d_keyword(v_false, "false")
+                                            d_keyword(v_false, "false")
 
-                                            d_keyword(v_nil, "nil")
+                                                d_keyword(v_nil, "nil")
 
-                                                d_keyword(v_dummy, "dummy")
+                                                    d_keyword(v_dummy, "dummy")
     }
 
     namespace operators {
@@ -252,14 +270,14 @@ namespace rpal::parser {
 
     Token Parser::getToken() {
         if (this->tokens.size() <= pointer) {
-            throw std::runtime_error("reach token end");
+            return *(new Token(TT::End));
         }
         return this->tokens[pointer];
     }
 
     Token Parser::getToken(uint pass) {
         if (this->tokens.size() <= pointer + pass) {
-            throw std::runtime_error("reach token end");
+            return *(new Token(TT::End));
         }
         return this->tokens[pointer + pass];
     }
@@ -299,7 +317,7 @@ namespace rpal::parser {
             auto* node = new AstNode(&t, Type::Lambda);
 
             do {
-                node->add_child(parse_Vb());
+                node->add_child_left(parse_Vb());
             } while (getToken() == TT::Id || getToken() == symbols::open_bracket());
 
             if (getToken() != symbols::dot()) {
@@ -329,13 +347,14 @@ namespace rpal::parser {
         Token t = getToken();
         if (getToken() == symbols::comma()) {
             auto* node = new AstNode(&t, Type::Tau);
-            node->add_child(node_Ta);
+            node->add_child_left(node_Ta);
             while (getToken() == symbols::comma()) {
                 forward();
-                if (getToken() != TT::Id) {
-                    throw std::runtime_error("expect identifier after comma");
+                t = getToken();
+                if (t != TT::Int && t != TT::Str && t != TT::Id) {
+                    throw std::runtime_error("expect value after comma");
                 }
-                node->add_child(parse_Ta());
+                node->add_child_left(parse_Ta());
             }
             return node;
         }
@@ -343,8 +362,19 @@ namespace rpal::parser {
     }
 
     AstNode* Parser::parse_Ta() {
-        // TODO : aug
-        return parse_Tc();
+        auto* node_Tc = parse_Tc();
+        return parse_Ta_(node_Tc);
+    }
+
+    AstNode* Parser::parse_Ta_(AstNode* left) {
+        Token t = getToken();
+        if (t == keywords::aug()) {
+            forward();
+            auto* node_Tc = parse_Tc();
+            auto* node_aug = new AstNode(&t, Type::Aug, left, node_Tc);
+            return parse_Ta_(node_aug);
+        }
+        return left;
     }
 
     AstNode* Parser::parse_Tc() {
@@ -353,12 +383,12 @@ namespace rpal::parser {
         if (t == operators::ternary()) {
             forward();
             auto* node = new AstNode(&t, Type::Ternary);
-            node->add_child(node_B);
-            node->add_child(parse_Tc());
+            node->add_child_left(node_B);
+            node->add_child_right(parse_Tc());
             if (getForward() != symbols::pipe()) {
                 throw std::runtime_error("expect pipe symbol after expression");
             }
-            node->add_child(parse_Tc());
+            node->add_child_right(parse_Tc());
             return node;
         }
         return node_B;
@@ -434,56 +464,65 @@ namespace rpal::parser {
     }
 
     AstNode* Parser::parse_A() {
-        if (getToken() == operators::add()) {
+        Token t = getToken();
+        if (t == operators::add()) {
             forward();
             return parse_A();
         }
 
-        Token t = getToken();
         if (t == operators::sub()) {
             forward();
-            AstNode* node_A = parse_A();
-            return new AstNode(&t, Type::Neg, node_A);
+            auto* node_At = parse_At();
+            auto* neg = new AstNode(&t, Type::Neg);
+            neg->add_child_left(node_At);
+            return parse_A_(neg);
         }
 
-        AstNode* node_At = parse_At();
-        t = getToken();
+        auto* node_At = parse_At();
+        return parse_A_(node_At);
+    }
+
+    AstNode* Parser::parse_A_(AstNode* left) {
+        Token t = getToken();
         if (t == operators::add()) {
             forward();
-            AstNode* node_A = parse_A();
-            auto* node = new AstNode(&t, Type::Add, node_At, node_A);
-            return node;
-        }
-        t = getToken();
-        if (t == operators::sub()) {
-            forward();
-            AstNode* node_A = parse_A();
-            auto* node = new AstNode(&t, Type::Sub, node_At, node_A);
-            return node;
+            auto* node_At = parse_At();
+            auto* node_add = new AstNode(&t, Type::Add, left, node_At);
+            return parse_A_(node_add);
         }
 
-        return node_At;
+        if (t == operators::sub()) {
+            forward();
+            auto* node_At = parse_At();
+            auto* node_sub = new AstNode(&t, Type::Sub, left, node_At);
+            return parse_A_(node_sub);
+        }
+
+        return left;
     }
 
     AstNode* Parser::parse_At() {
         AstNode* node_Af = parse_Af();
+        return parse_At_(node_Af);
+    }
+
+    AstNode* Parser::parse_At_(AstNode* left) {
         Token t = getToken();
         if (t == operators::mul()) {
             forward();
-            AstNode* node_At = parse_At();
-            auto* node = new AstNode(&t, Type::Mul, node_Af, node_At);
-            return node;
+            AstNode* node_Af = parse_Af();
+            auto* node_At = new AstNode(&t, Type::Mul, left, node_Af);
+            return parse_At_(node_At);
         }
 
-        t = getToken();
         if (t == operators::div()) {
             forward();
-            AstNode* node_At = parse_At();
-            auto* node = new AstNode(&t, Type::Div, node_Af, node_At);
-            return node;
+            AstNode* node_Af = parse_Af();
+            auto* node_At = new AstNode(&t, Type::Div, left, node_Af);
+            return parse_At_(node_At);
         }
 
-        return node_Af;
+        return left;
     }
 
     AstNode* Parser::parse_Af() {
@@ -507,7 +546,7 @@ namespace rpal::parser {
             }
             auto* node = new AstNode(&t, Type::At);
             Token t2 = getForward();
-            node->add_child(new AstNode(&t2, Type::Id, new std::string(t2.get_value<std::string>())));
+            node->add_child_left(new AstNode(&t2, Type::Id, new std::string(t2.get_value<std::string>())));
             node->add_child_right(parse_R());
             return node;
         }
@@ -581,10 +620,10 @@ namespace rpal::parser {
         Token t = getToken();
         if (t == keywords::and_kw()) {
             auto* node = new AstNode(&t, Type::And);
-            node->add_child(node_Dr);
+            node->add_child_left(node_Dr);
             while (getToken() == keywords::and_kw()) {
                 forward();
-                node->add_child(parse_Dr());
+                node->add_child_left(parse_Dr());
             }
             return node;
         }
@@ -596,7 +635,7 @@ namespace rpal::parser {
         if (t == keywords::rec()) {
             forward();
             AstNode* node_Db = parse_Db();
-            return new AstNode(&t, Type::Rec, node_Db);
+            return new AstNode(&t, Type::Rec, node_Db, nullptr);
         }
         return parse_Db();
     }
@@ -618,12 +657,12 @@ namespace rpal::parser {
                 // function form
                 auto* node = new AstNode(&t, Type::Fn);
                 t = getForward();
-                node->add_child(new AstNode(&t, Type::Id, new std::string(t.get_value<std::string>())));
-                node->add_child(parse_Vb());
+                node->add_child_left(new AstNode(&t, Type::Id, new std::string(t.get_value<std::string>())));
+                node->add_child_left(parse_Vb());
 
                 while (getToken() != operators::assign()) {
                     if (getToken() == TT::Id || getToken() == symbols::open_bracket()) {
-                        node->add_child(parse_Vb());
+                        node->add_child_left(parse_Vb());
                     } else {
                         throw std::runtime_error("expect = symbol");
                     }
@@ -672,12 +711,12 @@ namespace rpal::parser {
             Token t2 = getToken();
             if (t2 == symbols::comma()) {
                 auto* node_list = new AstNode(&t2, Type::ArgList);
-                node_list->add_child(node_first);
+                node_list->add_child_left(node_first);
                 while (getToken() == symbols::comma()) {
                     forward();
                     Token next_t = getForward();
                     if (next_t == TT::Id) {
-                        node_list->add_child(
+                        node_list->add_child_left(
                             new AstNode(&next_t, Type::Id, new std::string(next_t.get_value<std::string>())));
                     } else {
                         throw std::runtime_error("expect identifier after period");
@@ -691,22 +730,53 @@ namespace rpal::parser {
     }
 
     // generate and standardize
-    AstNode* generate_ast(token::TokenSource &source) {
+    AstNode* generate_ast(token::TokenSource& source) {
         auto parser = Parser(source);
         return parser.parse();
     }
 
     AstNode* standard_ast(AstNode* head) {
         if (*head == Type::Let) {
-            if (*head->get_left() != Type::Assign) throw std::runtime_error("expect variable assignment");
-            auto* X = standard_ast(head->get_left()->get_left());
-            auto* E = standard_ast(head->get_left()->get_right());
+            auto* assign = standard_ast(head->get_left());
+            if (*assign != Type::Assign) throw std::runtime_error("expect assignment operator");
+            auto* X = assign->get_left();
+            auto* E = assign->get_right();
             auto* P = standard_ast(head->get_right());
             auto* lambda = new AstNode(head->get_left()->get_token(), Type::Lambda, X, P);
             auto* gamma = new AstNode(head->get_token(), Type::Gamma, lambda, E);
-            delete head->get_left();
+            delete assign;
             delete head;
             return gamma;
+
+        } else if (*head == Type::Fn) {
+            auto* P = head->get_left();
+            auto* Vs = P->get_next();
+            P->clear_next();
+            auto* E = head->get_right();
+
+            // standardization
+            E = standard_ast(E);
+
+            auto* lambda = new AstNode(Type::Lambda, Vs, E);
+            auto* assign = new AstNode(head->get_token(), Type::Assign, P, lambda);
+            delete head;
+            return assign;
+
+        } else if (*head == Type::Rec) {
+            static auto* Ystar = new AstNode(Type::Id, new std::string("Ystar"));
+            auto* assign = standard_ast(head->get_left());
+            if (*assign != Type::Assign) throw std::runtime_error("expect assignment operator");
+
+            auto* name = assign->get_left();
+            auto* E = assign->get_right();
+
+            // standardization
+            E = standard_ast(E);
+
+            auto* lambda = new AstNode(Type::Lambda, name, E);
+            auto* gamma = new AstNode(Type::Gamma, Ystar, lambda);
+            return new AstNode(Type::Assign, name, gamma);
+
         } else if (*head == Type::Where) {
             if (*head->get_right() != Type::Assign) throw std::runtime_error("expect variable assignment");
             auto* X = standard_ast(head->get_right()->get_left());
@@ -717,34 +787,69 @@ namespace rpal::parser {
             delete head->get_left();
             delete head;
             return gamma;
+
+        } else if (*head == Type::Tau) {
+            auto* nil = new AstNode(Type::Nil);
+            auto* val = standard_ast(head->get_left());
+            auto* node_aug = new AstNode(head->get_token(), Type::Aug, nil, val);
+            auto* p_val = val;
+            val = val->get_next();
+            p_val->clear_next();
+            while (val != nullptr) {
+                val = standard_ast(val);
+                node_aug = new AstNode(head->get_token(), Type::Aug, node_aug, val);
+                p_val = val;
+                val = val->get_next();
+                p_val->clear_next();
+            }
+            return node_aug;
+
+        } else if (*head == Type::Gamma) {
+            auto* std_left = standard_ast(head->get_left());
+            auto* std_right = standard_ast(head->get_right());
+            head->set_left_child(std_left);
+            head->set_right_child(std_right);
+            return head;
+
+        } else if (*head == Type::Ternary) {
+            static auto* cond_node = new AstNode(Type::Id, new std::string("Cond"));
+            static auto* no_arg = new AstNode(Type::NoArg);
+            static auto* nil_node = new AstNode(Type::Nil);
+            auto* B = standard_ast(head->get_left());
+            auto* E1 = new AstNode(Type::Lambda, no_arg, standard_ast(head->get_right()));
+            auto* E2 = new AstNode(Type::Lambda, no_arg, standard_ast(head->get_right()->get_next()));
+            head->get_right()->clear_next();
+            auto* g1 = new AstNode(Type::Gamma, cond_node, B);
+            auto* g2 = new AstNode(Type::Gamma, g1, E1);
+            auto* g3 = new AstNode(Type::Gamma, g2, E2);
+            return new AstNode(Type::Gamma, g3, nil_node);
+
         }
         return head;
     }
 
-    void print_ast(AstNode *node, uint level) {
+    void print_ast(AstNode* node, uint level) {
         using namespace std;
         for (uint i = 0; i < level; i++) cout << '.';
         cout << *node << endl;
 
         if (node->leave()) return;
 
-        AstNode * nl = node->get_left();
-        while (true) {
+        AstNode* nl = node->get_left();
+        while (nl != nullptr) {
             print_ast(nl, level + 1);
             if (nl->get_next() == nullptr) break;
             nl = nl->get_next();
         }
 
-        AstNode *nr = node->get_right();
-        while (true) {
+        AstNode* nr = node->get_right();
+        while (nr != nullptr) {
             print_ast(nr, level + 1);
             if (nr->get_next() == nullptr) break;
             nr = nr->get_next();
         }
     }
 
-    void print_ast(AstNode *head) {
-        print_ast(head, 0);
-    }
+    void print_ast(AstNode* head) { print_ast(head, 0); }
 
 }  // namespace rpal::parser

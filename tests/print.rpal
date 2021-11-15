@@ -1,5 +1,3 @@
-let x=3
+let rec P x = x eq 0 -> 0 | x+P(x-1)
 in
-let y=5
-in
-Print(y-x-2)
+Print(P 5)

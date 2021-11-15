@@ -20,6 +20,8 @@ namespace rpal::options {
                     this->help = true;
                 } else if (option == "-a" || option == "--ast") {
                     this->ast = true;
+                } else if (option == "-s" || option == "--st") {
+                    this->st = true;
                 } else if (option == "-t" || option == "--tokens") {
                     this->tokens = true;
                 } else {
