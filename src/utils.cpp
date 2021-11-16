@@ -3,7 +3,7 @@
 namespace rpal::options {
     void show_usage() {
         Println("USAGE:");
-        Println("\t rpal [-h, --help] [-t, --tokens] [-a, --ast] <filename>");
+        Println("\t rpal [-h, --help] [-t, --tokens] [-a, --ast] [-s, --st] <filename>");
         exit(0);
     }
 

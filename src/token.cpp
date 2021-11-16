@@ -205,6 +205,7 @@ namespace rpal::token {
     std::string read_source_code(std::string& filename) {
         std::stringstream source;
         std::ifstream file((const char*)filename.data());
+        if (!file.good()) throw std::runtime_error("File not exists or empty source!");
         source << file.rdbuf();
         return source.str();
     }
